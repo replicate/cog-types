@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SUITE="${SUITE:-313-pydantic2-tests}"
+printf 'Running SUITE=%s\n' "${SUITE}"
+
+cd "$(git rev-parse --show-toplevel)"
+exec uv run python -Im tox run -e "${SUITE}"

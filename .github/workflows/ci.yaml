@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  merge_group:
+  push:
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build-python:
+    name: Build & verify python package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for setuptools_scm version determination
+      - uses: hynek/build-and-inspect-python-package@v2
+        id: baipp
+    outputs:
+      python-versions: ${{ steps.baipp.outputs.supported_python_classifiers_json_array }}
+
+  test-python:
+    name: "Test Python ${{ matrix.python-version }} + Pydantic v${{ matrix.pydantic }}"
+    needs: build-python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pydantic: ["1", "2"]
+        python-version: ${{ fromJson(needs.build-python.outputs.python-versions) }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: hynek/setup-cached-uv@v2
+      - name: Prepare tox
+        run: |
+          echo TOX_PYTHON=py$(echo "${{ matrix.python-version }}" | tr -d .) >>$GITHUB_ENV
+          uv pip install --system tox
+      - run: uv pip install --system tox-uv
+      - name: Test
+        run: python -Im tox run -e ${{ env.TOX_PYTHON }}-pydantic${{ matrix.pydantic }}-tests
