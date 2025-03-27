@@ -33,6 +33,9 @@ jobs:
         pydantic: ["1", "2"]
         python-version: ${{ fromJson(needs.build-python.outputs.python-versions) }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for setuptools_scm version determination
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
